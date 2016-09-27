@@ -9,7 +9,7 @@ stop(Worker) ->
   Worker ! stop.
 
 init(Name, Log, Seed, Sleep, Jitter) ->
-  random:seed(Seed, Seed, Seed),
+  rand:seed(exs64, {Seed, Seed, Seed}),
   receive
     {peers, Peers} ->
       loop(Name, Log, Peers, Sleep, Jitter);
@@ -21,7 +21,7 @@ peers(Wrk, Peers) ->
   Wrk ! {peers, Peers}.
 
 loop(Name, Log, Peers, Sleep, Jitter) ->
-  Wait = random:uniform(Sleep),
+  Wait = rand:uniform(Sleep),
   receive
     {msg, Time, Msg} ->
       Log ! {log, Name, Time, {received, Msg}},
@@ -33,7 +33,7 @@ loop(Name, Log, Peers, Sleep, Jitter) ->
     after Wait ->
       Selected = select(Peers),
       Time = na,
-      Message = {hello, random:uniform(100)},
+      Message = {hello, rand:uniform(100)},
       Selected ! {msg, Time, Message},
       jitter(Jitter),
       Log ! {log, Name, Time, {sending, Message}},
@@ -41,7 +41,7 @@ loop(Name, Log, Peers, Sleep, Jitter) ->
   end.
 
 select(Peers) ->
-  lists:nth(random:uniform(length(Peers)), Peers).
+  lists:nth(rand:uniform(length(Peers)), Peers).
 
 jitter(0) -> ok;
-jitter(Jitter) -> timer:sleep(random:uniform(Jitter)).
+jitter(Jitter) -> timer:sleep(rand:uniform(Jitter)).
