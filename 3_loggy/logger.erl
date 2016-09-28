@@ -16,7 +16,8 @@ loop(Clock, Queue) ->
     {log, From, Time, Msg} ->
       % should never worry about receiving lower Time for same Node
       NewClock = time:update(From, Time, Clock),
-      NewQueue = logAndRemove(NewClock, Queue ++ [{From, Time, Msg}]),
+      % put element at the beginning of the queue as it will traversed before elements blocked by it
+      NewQueue = logAndRemove(NewClock, [{From, Time, Msg}] ++ Queue),
       loop(NewClock, NewQueue);
     stop ->
       ok
