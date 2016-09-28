@@ -30,7 +30,7 @@ loop(Name, Log, Peers, Sleep, Jitter) ->
       ok;
     Error ->
       Log ! {log, Name, time, {error, Error}}
-    after Wait ->
+  after Wait ->
       Selected = select(Peers),
       Time = na,
       Message = {hello, rand:uniform(100)},
