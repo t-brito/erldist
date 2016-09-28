@@ -35,7 +35,7 @@ loop(Name, Log, Peers, Sleep, Jitter, OwnTime) ->
   after Wait ->
       Selected = select(Peers),
       Time = time:inc(Name, OwnTime),
-      Message = {hello, rand:uniform(100)},
+      Message = {hello, rand:uniform(1000)},
       Selected ! {msg, Time, Message},
       jitter(Jitter),
       Log ! {log, Name, Time, {sending, Message}},

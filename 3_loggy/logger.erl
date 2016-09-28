@@ -8,16 +8,29 @@ start(Nodes) ->
 stop(Logger) ->
   Logger ! stop.
 
-init(_) ->        % extend this to accept list of nodes
-  loop().
+init(Nodes) ->
+  loop(time:clock(Nodes), []).
 
-loop() ->
+loop(Clock, Queue) ->
   receive
     {log, From, Time, Msg} ->
-      log(From, Time, Msg),
-      loop();
+      % should never worry about receiving lower Time for same Node
+      NewClock = time:update(From, Time, Clock),
+      NewQueue = logAndRemove(NewClock, Queue ++ [{From, Time, Msg}]),
+      loop(NewClock, NewQueue);
     stop ->
       ok
+  end.
+
+logAndRemove(_, []) ->
+  [];
+logAndRemove(Clock, [{From, Time, Msg}|RestQueue]) ->
+  case time:safe(Time, Clock) of
+    true ->
+      log(From, Time, Msg),
+      logAndRemove(Clock, RestQueue);
+    false ->
+      [{From, Time, Msg}] ++ logAndRemove(Clock, RestQueue)
   end.
 
 log(From, Time, Msg) ->
