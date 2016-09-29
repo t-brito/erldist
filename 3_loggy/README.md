@@ -1,6 +1,7 @@
 ### Compile modules
 
 ```
+> c(time).
 > c(logger).
 > c(worker).
 > c(test).
