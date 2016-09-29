@@ -7,7 +7,7 @@
 zero() -> [{john, 0}, {paul, 0}, {ringo, 0}, {george, 0}].
 
 inc(_, []) -> [];
-inc(Node, [{Node, Ti}|Tail]) -> [{Node, Ti+1}] ++ Tail; % maybe [{Node, Ti+1}|Tail];
+inc(Node, [{Node, Ti}|Tail]) -> [{Node, Ti+1}] ++ Tail;
 inc(Node, [H|T]) -> [H] ++ inc(Node, T).
 
 merge([], []) -> [];
