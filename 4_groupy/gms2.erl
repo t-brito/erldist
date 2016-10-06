@@ -2,9 +2,19 @@
 
 -export([start/1, start/2]).
 
-bcast(_Id, Msg, Pids) ->
-  [P ! Msg || P <- Pids],
-  ok.
+bcast(Id, Msg, Nodes) ->
+  lists:foreach(fun(Node) -> Node ! Msg, crash(Id) end, Nodes).
+
+
+crash(Id) ->
+  case rand:uniform(1000) of
+    1000 ->
+      io:format("leader ~w: crash~n", [Id]),
+      exit(no_luck);
+    _ ->
+      ok
+  end.
+
 
 leader(Id, Master, Slaves, Group) ->
   receive
@@ -45,7 +55,6 @@ slave(Id, Master, Leader, Slaves, Group) ->
 
     % account for view messages where you don't recognize leader
     {view, _, _} ->
-      io:format("ignoring message from unrecognized leader"),
       slave(Id, Master, Leader, Slaves, Group);
 
     {'DOWN', _Ref, process, Leader, _Reason} ->   % message sent by erlang:monitor(process, Leader)
@@ -88,7 +97,6 @@ election(Id, Master, Slaves, [_|Group]) ->
     [Self|Rest] ->
       bcast(Id, {view, Slaves, Group}, Rest),
       Master ! {view, Group},
-      io:format("leader stepping up. ~n"),
       leader(Id, Master, Rest, Group);
     [Leader|Rest] ->
       erlang:monitor(process, Leader),

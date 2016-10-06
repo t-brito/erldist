@@ -1,12 +1,9 @@
 -module(gms1).
 
--export([leader/4, slave/5]).
 -export([start/1, start/2]).
--export([bcast/3]).
 
-bcast(_Id, Msg, Pids) ->
-  [P ! Msg || P <- Pids],
-  ok.
+bcast(_Id, Msg, Slaves) ->
+  lists:foreach(fun(Slave) -> Slave ! Msg end, Slaves).
 
 leader(Id, Master, Slaves, Group) ->
   receive

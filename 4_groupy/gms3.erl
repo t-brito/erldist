@@ -45,16 +45,16 @@ slave(Id, Master, Leader, N, Last, Slaves, Group) ->
       Leader ! {join, Wrk, Peer},
       slave(Id, Master, Leader, N, Last, Slaves, Group);
 
-    {msg, NextN, Msg} when NextN > N ->
+    {msg, I, Msg} when I > N ->
       Master ! Msg,
-      slave(Id, Master, Leader, NextN, {msg, NextN, Msg}, Slaves, Group);
+      slave(Id, Master, Leader, I, {msg, I, Msg}, Slaves, Group);
 
-    {msg, _, _} ->  % invalid NextN
+    {msg, _, _} ->  % invalid I
       slave(Id, Master, Leader, N, Last, Slaves, Group);
 
-    {view, NextN, [Leader|Slaves2], Group2} when NextN > N ->
+    {view, I, [Leader|Slaves2], Group2} when I > N ->
       Master ! {view, Group2},
-      slave(Id, Master, Leader, NextN, {view, NextN, [Leader|Slaves2], Group2}, Slaves2, Group2);
+      slave(Id, Master, Leader, I, {view, I, [Leader|Slaves2], Group2}, Slaves2, Group2);
 
     % account for view messages where you don't recognize leader
     {view, _, _, _} ->
