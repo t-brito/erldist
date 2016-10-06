@@ -7,8 +7,8 @@ bcast(Id, Msg, Nodes) ->
 
 
 crash(Id) ->
-  case rand:uniform(1000) of
-    1000 ->
+  case rand:uniform(100) of
+    100 ->
       io:format("leader ~w: crash~n", [Id]),
       exit(no_luck);
     _ ->
@@ -102,7 +102,6 @@ election(Id, Master, N, Last, Slaves, [_|Group]) ->
       bcast(Id, Last, Rest),
       bcast(Id, {view, N+1, Slaves, Group}, Rest),
       Master ! {view, Group},
-      io:format("~w: leader stepping up. ~n", [Id]),
       leader(Id, Master, N+1, Rest, Group);
     [Leader|Rest] ->
       erlang:monitor(process, Leader),

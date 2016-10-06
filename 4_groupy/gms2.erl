@@ -7,8 +7,8 @@ bcast(Id, Msg, Nodes) ->
 
 
 crash(Id) ->
-  case rand:uniform(1000) of
-    1000 ->
+  case rand:uniform(100) of
+    100 ->
       io:format("leader ~w: crash~n", [Id]),
       exit(no_luck);
     _ ->
