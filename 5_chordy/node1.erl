@@ -18,7 +18,7 @@ init(Id, Peer) ->
 connect(Id, nil) ->
   {ok, {Id, self()}};
 
-connect(Id, Peer) ->
+connect(_, Peer) ->
   Qref = make_ref(),
   Peer ! {key, Qref, self()},
   receive

@@ -13,12 +13,12 @@ init(Id, Peer) ->
   Predecessor = nil,
   {ok, Successor} = connect(Id, Peer),
   schedule_stabilize(),
-  node(Id, Predecessor, Successor).
+  node(Id, Predecessor, Successor, storage:create()).
 
 connect(Id, nil) ->
   {ok, {Id, self()}};
 
-connect(Id, Peer) ->
+connect(_, Peer) ->
   Qref = make_ref(),
   Peer ! {key, Qref, self()},
   receive
@@ -31,49 +31,83 @@ connect(Id, Peer) ->
 
 
 schedule_stabilize() ->
-%  timer:send_interval(3000, self(), print),
   timer:send_interval(1000, self(), stabilize).
 
 
-node(Id, Predecessor, Successor) ->
+node(Id, Predecessor, Successor, Store) ->
   receive
     {key, Qref, Peer} ->
       Peer ! {Qref, Id},
-      node(Id, Predecessor, Successor);
+      node(Id, Predecessor, Successor, Store);
 
     {notify, New} ->                            % msg from Potential new predecessor
-      Pred = notify(New, Id, Predecessor),
-      node(Id, Pred, Successor);
+      {Pred, NewStore} = notify(New, Id, Predecessor, Store),
+      node(Id, Pred, Successor, NewStore);
 
     {request, Peer} ->                          % msg from old predecessor (stabilize)
       request(Peer, Predecessor),
-      node(Id, Predecessor, Successor);
+      node(Id, Predecessor, Successor, Store);
 
     {status, Pred} ->                           % message from old Successor (stabilize)
       Succ = stabilize(Pred, Id, Successor),    % stabilize link
-      node(Id, Predecessor, Succ);
+      node(Id, Predecessor, Succ, Store);
 
     stabilize ->                                % periodically called
       stabilize(Successor),
-      node(Id, Predecessor, Successor);
+      node(Id, Predecessor, Successor, Store);
 
     print ->
       io:format("me: ~w, pred: ~w, succ: ~w~n", [Id, Predecessor, Successor]),
-      node(Id, Predecessor, Successor);
+      node(Id, Predecessor, Successor, Store);
 
     probe ->
       create_probe(Id, Successor),
-      node(Id, Predecessor, Successor);
+      node(Id, Predecessor, Successor, Store);
 
     {probe, Id, Nodes, T} ->
       remove_probe(T, Nodes),
-      node(Id, Predecessor, Successor);
+      node(Id, Predecessor, Successor, Store);
 
     {probe, Ref, Nodes, T} ->
       forward_probe(Ref, T, Nodes, Id, Successor),
-      node(Id, Predecessor, Successor)
+      node(Id, Predecessor, Successor, Store);
+
+    {add, Key, Value, Qref, Client} ->
+      Added = add(Key, Value, Qref, Client, Id, Predecessor, Successor, Store),
+      node(Id, Predecessor, Successor, Added);
+
+    {lookup, Key, Qref, Client} ->
+      lookup(Key, Qref, Client, Id, Predecessor, Successor, Store),
+      node(Id, Predecessor, Successor, Store);
+
+    {handover, Elements} ->
+      Merged = storage:merge(Store, Elements),
+      node(Id, Predecessor, Successor, Merged)
 
   end.
+
+
+
+add(Key, Value, Qref, Client, Id, {Pkey, _}, {_, Spid}, Store) ->
+  case key:between(Key, Pkey, Id) of
+    true ->
+      Client ! {Qref, ok},
+      storage:add(Key, Value, Store);
+    false ->
+      Spid ! {add, Key, Value, Qref, Client},
+      Store
+  end.
+
+lookup(Key, Qref, Client, Id, {Pkey, _}, {_, Spid}, Store) ->
+  case key:between(Key, Pkey, Id) of
+    true ->
+      Result = storage:lookup(Key, Store),
+      Client ! {Qref, Result};
+    false ->
+      Spid ! {lookup, Key, Qref, Client}
+  end.
+
+
 
 create_probe(Id, Successor) ->
   {_, Spid} = Successor,
@@ -101,22 +135,26 @@ request(Peer, Predecessor) ->
   end.
 
 
-notify({Nkey, Npid}, Id, Predecessor) ->
+notify({Nkey, Npid}, Id, Predecessor, Store) ->
   case Predecessor of
     nil ->
-      {Nkey, Npid};
+      Keep = handover(Id, Store, Nkey, Npid),
+      {{Nkey, Npid}, Keep};
 
     {Pkey, _} ->
       case key:between(Nkey, Pkey, Id) of
         true ->
-          {Nkey, Npid};
+          Keep = handover(Id, Store, Nkey, Npid),
+          {{Nkey, Npid}, Keep};
         false ->
-          Predecessor
+          {Predecessor, Store}
       end
   end.
 
-
-
+handover(Id, Store, Nkey, Npid) ->
+  {Keep, Rest} = storage:split(Id, Nkey, Store),
+  Npid ! {handover, Rest},
+  Keep.
 
 stabilize(Pred, Id, Successor) ->               % stabilize link - return new successor
   {Skey, Spid} = Successor,
